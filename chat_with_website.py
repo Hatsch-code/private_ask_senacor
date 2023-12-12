@@ -15,7 +15,7 @@ from langchain.vectorstores import Chroma
 # Load environment variables from .env file (Optional)
 load_dotenv()
 
-OPENAI_API_KEY= os.getenv("OPENAI_API_KEY")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 system_template = """Use the following pieces of context to answer the users question.
 If you don't know the answer, just say that you don't know, don't try to make up an answer.
@@ -30,6 +30,11 @@ chain_type_kwargs = {"prompt": prompt}
 
 
 def main():
+    if "messages" not in st.session_state.keys():  # Initialize the chat message history
+        st.session_state.messages = [
+            {"role": "assistant", "content": "Ask me a question about Streamlit's open-source Python library!"}
+        ]
+
     # Set the title and subtitle of the app
     st.title('🦜🔗 Chat With Website')
     st.subheader('Input your website URL, ask questions, and receive answers directly from the website.')
@@ -46,9 +51,9 @@ def main():
         data = loader.load()
 
         # Split the loaded data
-        text_splitter = CharacterTextSplitter(separator='\n', 
-                                        chunk_size=500, 
-                                        chunk_overlap=40)
+        text_splitter = CharacterTextSplitter(separator='\n',
+                                              chunk_size=500,
+                                              chunk_overlap=40)
 
         docs = text_splitter.split_documents(data)
 
@@ -56,9 +61,9 @@ def main():
         openai_embeddings = OpenAIEmbeddings()
 
         # Create a Chroma vector database from the documents
-        vectordb = Chroma.from_documents(documents=docs, 
-                                        embedding=openai_embeddings,
-                                        persist_directory=DB_DIR)
+        vectordb = Chroma.from_documents(documents=docs,
+                                         embedding=openai_embeddings,
+                                         persist_directory=DB_DIR)
 
         vectordb.persist()
 
@@ -74,7 +79,7 @@ def main():
         # Run the prompt and return the response
         response = qa(prompt)
         st.write(response)
-        
+
 
 if __name__ == '__main__':
     main()
