@@ -11,11 +11,14 @@ from langchain.prompts.chat import (ChatPromptTemplate,
                                     SystemMessagePromptTemplate)
 from langchain.text_splitter import CharacterTextSplitter
 from langchain.vectorstores import Chroma
+from langchain.vectorstores.azuresearch import AzureSearch
 
 # Load environment variables from .env file (Optional)
 load_dotenv()
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+vector_store_address: str = os.getenv("YOUR_AZURE_SEARCH_ENDPOINT")
+vector_store_password: str = os.getenv("YOUR_AZURE_SEARCH_ADMIN_KEY")
 
 system_template = """Use the following pieces of context to answer the users question.
 If you don't know the answer, just say that you don't know, don't try to make up an answer.
@@ -60,15 +63,24 @@ def main():
         # Create OpenAI embeddings
         openai_embeddings = OpenAIEmbeddings()
 
-        # Create a Chroma vector database from the documents
-        vectordb = Chroma.from_documents(documents=docs,
-                                         embedding=openai_embeddings,
-                                         persist_directory=DB_DIR)
+        index_name: str = "langchain-vector-demo"
+        vector_store: AzureSearch = AzureSearch(
+            azure_search_endpoint=vector_store_address,
+            azure_search_key=vector_store_password,
+            index_name=index_name,
+            embedding_function=openai_embeddings.embed_query,
+        )
+        vector_store.add_documents(documents=docs)
 
-        vectordb.persist()
+        docs = vector_store.similarity_search(
+            query="What does Senacor do?",
+            k=3,
+            search_type="similarity",
+        )
+        print(docs[0].page_content)
 
         # Create a retriever from the Chroma vector database
-        retriever = vectordb.as_retriever(search_kwargs={"k": 3})
+        retriever = vector_store.as_retriever(search_kwargs={"k": 3})
 
         # Use a ChatOpenAI model
         llm = ChatOpenAI(model_name='gpt-3.5-turbo')
