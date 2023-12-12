@@ -31,6 +31,7 @@ messages = [
 prompt = ChatPromptTemplate.from_messages(messages)
 chain_type_kwargs = {"prompt": prompt}
 
+
 def setup_ui():
     # Set the title and subtitle of the app
     st.title('🦜🔗 Chat With Website')
