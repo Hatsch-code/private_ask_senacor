@@ -31,53 +31,59 @@ messages = [
 prompt = ChatPromptTemplate.from_messages(messages)
 chain_type_kwargs = {"prompt": prompt}
 
+def setup_ui():
+    # Set the title and subtitle of the app
+    st.title('🦜🔗 Chat With Website')
+    st.subheader('Input your website URL, ask questions, and receive answers directly from the website.')
+
+
+def init_vector_store(embeddings, index_name="langchain-vector-demo"):
+    index_name: str = index_name
+    vector_store: AzureSearch = AzureSearch(
+        azure_search_endpoint=vector_store_address,
+        azure_search_key=vector_store_password,
+        index_name=index_name,
+        embedding_function=embeddings.embed_query,
+    )
+    return vector_store
+
+
+def add_website_to_vector_store(url, vector_store):
+    # Load data from the specified URL
+    loader = WebBaseLoader(url)
+    data = loader.load()
+    # Split the loaded data
+    text_splitter = CharacterTextSplitter(separator='\n',
+                                          chunk_size=500,
+                                          chunk_overlap=40)
+
+    docs = text_splitter.split_documents(data)
+    vector_store.add_documents(documents=docs)
+
+
+def print_semantic_similarity(question, vector_store, k=3, search_type="similarity"):
+    docs = vector_store.similarity_search(
+        query=question,
+        k=k,
+        search_type=search_type,
+    )
+    print(docs[0].page_content)
 
 def main():
     if "messages" not in st.session_state.keys():  # Initialize the chat message history
         st.session_state.messages = [
             {"role": "assistant", "content": "Ask me a question about Streamlit's open-source Python library!"}
         ]
+    setup_ui()
 
-    # Set the title and subtitle of the app
-    st.title('🦜🔗 Chat With Website')
-    st.subheader('Input your website URL, ask questions, and receive answers directly from the website.')
+    prompt = st.text_input("Ask a question (query/prompt) about all the websites you have added to the vector store.")
 
-    url = st.text_input("Insert The website URL")
-
-    prompt = st.text_input("Ask a question (query/prompt)")
     if st.button("Submit Query", type="primary"):
-        ABS_PATH: str = os.path.dirname(os.path.abspath(__file__))
-        DB_DIR: str = os.path.join(ABS_PATH, "db")
-
-        # Load data from the specified URL
-        loader = WebBaseLoader(url)
-        data = loader.load()
-
-        # Split the loaded data
-        text_splitter = CharacterTextSplitter(separator='\n',
-                                              chunk_size=500,
-                                              chunk_overlap=40)
-
-        docs = text_splitter.split_documents(data)
-
         # Create OpenAI embeddings
         openai_embeddings = OpenAIEmbeddings()
 
-        index_name: str = "langchain-vector-demo"
-        vector_store: AzureSearch = AzureSearch(
-            azure_search_endpoint=vector_store_address,
-            azure_search_key=vector_store_password,
-            index_name=index_name,
-            embedding_function=openai_embeddings.embed_query,
-        )
-        vector_store.add_documents(documents=docs)
-
-        docs = vector_store.similarity_search(
-            query="What does Senacor do?",
-            k=3,
-            search_type="similarity",
-        )
-        print(docs[0].page_content)
+        # Init Vector Store
+        vector_store = init_vector_store(openai_embeddings)
 
         # Create a retriever from the Chroma vector database
         retriever = vector_store.as_retriever(search_kwargs={"k": 3})
@@ -91,6 +97,10 @@ def main():
         # Run the prompt and return the response
         response = qa(prompt)
         st.write(response)
+
+    url = st.text_input("Insert The website URL")
+    if st.button("Add Website", type="secondary"):
+        add_website_to_vector_store(url, vector_store)
 
 
 if __name__ == '__main__':
