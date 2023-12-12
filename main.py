@@ -70,6 +70,7 @@ def print_semantic_similarity(question, vector_store, k=3, search_type="similari
     )
     print(docs[0].page_content)
 
+
 def main():
     if "messages" not in st.session_state.keys():  # Initialize the chat message history
         st.session_state.messages = [
