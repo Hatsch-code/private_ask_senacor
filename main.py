@@ -12,6 +12,7 @@ from langchain.prompts.chat import (ChatPromptTemplate,
 from langchain.text_splitter import CharacterTextSplitter
 from langchain.vectorstores import Chroma
 from langchain.vectorstores.azuresearch import AzureSearch
+from streamlit_chat import message
 
 # Load environment variables from .env file (Optional)
 load_dotenv()
@@ -34,7 +35,7 @@ chain_type_kwargs = {"prompt": prompt}
 
 def setup_ui():
     # Set the title and subtitle of the app
-    st.title('🦜🔗 Chat With Website')
+    st.title('🦜🔗 Chat with Senacor Website')
     st.subheader('Input your website URL, ask questions, and receive answers directly from the website.')
 
 
@@ -71,37 +72,49 @@ def print_semantic_similarity(question, vector_store, k=3, search_type="similari
     print(docs[0].page_content)
 
 
+# Simple QA
+def standard_query(question, k=3, model_name="gpt-3.5-turbo"):
+    # Create OpenAI embeddings
+    openai_embeddings = OpenAIEmbeddings()
+    # Init Vector Store
+    vector_store = init_vector_store(openai_embeddings)
+    # Create a retriever from the Chroma vector database
+    retriever = vector_store.as_retriever(search_kwargs={"k": k})
+    # Use a ChatOpenAI model
+    llm = ChatOpenAI(model_name=model_name)
+    # Create a RetrievalQA from the model and retriever
+    qa = RetrievalQA.from_chain_type(llm=llm, chain_type="stuff", retriever=retriever)
+    return qa(question)
+
+
+def get_text():
+    input_text = st.text_input("You: ","Hello, how are you?", key="input")
+    return input_text
+
+
 def main():
     if "messages" not in st.session_state.keys():  # Initialize the chat message history
         st.session_state.messages = [
-            {"role": "assistant", "content": "Ask me a question about Streamlit's open-source Python library!"}
+            {"role": "assistant", "content": "Ask me a question about all the websites you have added to the vector store!"}
         ]
     setup_ui()
 
     prompt = st.text_input("Ask a question (query/prompt) about all the websites you have added to the vector store.")
-
     if st.button("Submit Query", type="primary"):
-        # Create OpenAI embeddings
-        openai_embeddings = OpenAIEmbeddings()
+        response = standard_query(prompt)
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        st.session_state.messages.append({"role": "assistant", "content": response["result"]})
 
-        # Init Vector Store
-        vector_store = init_vector_store(openai_embeddings)
-
-        # Create a retriever from the Chroma vector database
-        retriever = vector_store.as_retriever(search_kwargs={"k": 3})
-
-        # Use a ChatOpenAI model
-        llm = ChatOpenAI(model_name='gpt-3.5-turbo')
-
-        # Create a RetrievalQA from the model and retriever
-        qa = RetrievalQA.from_chain_type(llm=llm, chain_type="stuff", retriever=retriever)
-
-        # Run the prompt and return the response
-        response = qa(prompt)
-        st.write(response)
+    if st.session_state.messages:
+        for i in range(0, len(st.session_state['messages']), 1,):
+            if st.session_state['messages'][i]['role'] == 'user':
+                message(st.session_state.messages[i]["content"], is_user=True, key=str(i) + '_user', avatar_style="big-smile")
+            else:
+                message(st.session_state.messages[i]["content"], key=str(i))
 
     url = st.text_input("Insert The website URL")
     if st.button("Add Website", type="secondary"):
+        vector_store = init_vector_store()
         add_website_to_vector_store(url, vector_store)
 
 
