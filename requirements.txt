@@ -117,6 +117,7 @@ soupsieve==2.5
 SQLAlchemy==2.0.23
 starlette==0.27.0
 streamlit==1.29.0
+streamlit-chat==0.1.1
 sympy==1.12
 tenacity==8.2.3
 tiktoken==0.5.2
