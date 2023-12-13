@@ -6,7 +6,7 @@ from langchain.chains import RetrievalQA
 #from langchain.chat_models import ChatOpenAI
 from langchain.chat_models import AzureChatOpenAI
 
-from langchain.document_loaders import WebBaseLoader
+from langchain.document_loaders import WebBaseLoader, ConfluenceLoader
 #from langchain.embeddings import OpenAIEmbeddings
 from langchain.embeddings import AzureOpenAIEmbeddings
 
@@ -25,7 +25,10 @@ load_dotenv()
 AZURE_OPENAI_API_KEY = os.getenv("AZURE_OPENAI_API_KEY")
 AZURE_OPENAI_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT")
 
-
+CONFLUENCE_URL = os.getenv("CONFLUENCE_URL", None)
+CONFLUENCE_USERNAME = os.getenv("CONFLUENCE_USERNAME", None)
+CONFLUENCE_API_KEY = os.getenv("CONFLUENCE_API_KEY", None)
+CONFLUENCE_TOKEN = os.getenv("CONFLUENCE_TOKEN", None)
 
 vector_store_address: str = os.getenv("YOUR_AZURE_SEARCH_ENDPOINT")
 vector_store_password: str = os.getenv("YOUR_AZURE_SEARCH_ADMIN_KEY")
@@ -59,10 +62,44 @@ def init_vector_store(embeddings, index_name="langchain-vector-demo"):
     return vector_store
 
 
-def add_website_to_vector_store(url, vector_store):
+def add_website_to_vector_store(url):
+    vector_store = init_vector_store(embeddings=AzureOpenAIEmbeddings(
+        azure_deployment="AskSenacor-ada002-v1",
+        openai_api_version="2023-05-15",
+    ),
+        index_name="langchain-vector-demo")
     # Load data from the specified URL
     loader = WebBaseLoader(url)
     data = loader.load()
+    # Split the loaded data
+    text_splitter = CharacterTextSplitter(separator='\n',
+                                          chunk_size=500,
+                                          chunk_overlap=40)
+
+    docs = text_splitter.split_documents(data)
+    vector_store.add_documents(documents=docs)
+
+
+def add_confluence_to_vector_store():
+    # Load data from the specified Confluence site
+    embeddings = AzureOpenAIEmbeddings(
+        azure_deployment="AskSenacor-ada002-v1",
+        openai_api_version="2023-05-15",
+    )
+    vector_store = init_vector_store(embeddings, index_name="langchain-vector-demo")
+    # Username and API Token
+    if CONFLUENCE_API_KEY:
+        loader = ConfluenceLoader(
+            url=CONFLUENCE_URL, username=CONFLUENCE_USERNAME, api_key=CONFLUENCE_API_KEY
+        )
+        data = loader.load(space_key="SPACE", include_attachments=True, limit=50)
+    elif CONFLUENCE_TOKEN:
+        # depends on given access type
+        loader = ConfluenceLoader(url=CONFLUENCE_URL, token=CONFLUENCE_TOKEN)
+        data = loader.load(
+            space_key="SPACE", include_attachments=True, limit=50, max_pages=50
+        )
+
     # Split the loaded data
     text_splitter = CharacterTextSplitter(separator='\n',
                                           chunk_size=500,
@@ -133,8 +170,10 @@ def main():
 
     url = st.text_input("Insert The website URL")
     if st.button("Add Website", type="secondary"):
-        vector_store = init_vector_store()
-        add_website_to_vector_store(url, vector_store)
+        add_website_to_vector_store(url)
+
+    if CONFLUENCE_URL and st.button("Add Confluence", type="secondary"):
+        add_confluence_to_vector_store()
 
 
 if __name__ == '__main__':
