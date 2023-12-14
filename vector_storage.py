@@ -78,7 +78,7 @@ def add_website_to_vector_store(url):
     vector_store.add_documents(documents=docs)
 
 
-def add_confluence_to_vector_store():
+def add_confluence_to_vector_store(page_ids=["209421559", "209421568", "209421563"]):
     # Load data from the specified Confluence site
     embeddings = AzureOpenAIEmbeddings(
         azure_deployment="AskSenacor-ada002-v1",
@@ -94,7 +94,7 @@ def add_confluence_to_vector_store():
     elif CONFLUENCE_TOKEN:
         # depends on given access type
         loader = ConfluenceLoader(url=CONFLUENCE_URL, token=CONFLUENCE_TOKEN)
-        data = loader.load(page_ids=["209421559", "209421568", "209421563"], content_format=ContentFormat.VIEW)
+        data = loader.load(page_ids=page_ids, content_format=ContentFormat.VIEW)
 
     # Split the loaded data
     text_splitter = RecursiveCharacterTextSplitter(separators=['\n', '\n\n', ' '],
