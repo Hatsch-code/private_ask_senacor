@@ -86,6 +86,7 @@ try:
         {question} will be replaced with the user's question.
             """
 
+
     col1, col2, col3 = st.columns([2, 2, 2])
     with col1:
         st.button("Check deployment", on_click=check_deployment)
