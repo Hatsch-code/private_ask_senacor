@@ -66,4 +66,4 @@ jobs:
         with:
           app-name: 'asksenacorwebsite'
           slot-name: 'Production'
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_08E1A689C6F04B71B37D13FF1D32ADD4 }}
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_60C8FA7B96894B798EE3AB7B015128DD }}
